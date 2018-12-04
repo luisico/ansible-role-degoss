@@ -50,7 +50,7 @@ def main(argv=sys.argv):
     """Main entrypoint into the module, instantiates and executes the service."""
     Degoss(argv, AnsibleModule(
         argument_spec=dict(
-            log_file=dict(required=False, default=os.path.join(tempfile.gettempdir(), 'degoss.log')),
+            log_file=dict(required=False, default=None),
             verbose=dict(required=False, default=False),
         )
     )).execute()
@@ -80,15 +80,16 @@ class Degoss(object):
         console_handler = logging.StreamHandler(stream=sys.stderr)
         console_handler.setFormatter(logging.Formatter(CONSOLE_LOGGING_FORMAT))
 
-        disk_handler = logging.FileHandler(filename=self.module.params.get('log_file'))
-        disk_handler.setFormatter(logging.Formatter(DISK_LOGGING_FORMAT))
-
         logger = logging.getLogger('degoss')
+
         # catchall handler for saving output
         logger.addHandler(buffer_handler)
 
         if self.module.params.get('log_file', None):
             # conditionally setup disk logging
+            disk_handler = logging.FileHandler(filename=self.module.params.get('log_file'))
+            disk_handler.setFormatter(logging.Formatter(DISK_LOGGING_FORMAT))
+
             logger.addHandler(disk_handler)
 
         if self.get_bool('verbose', False):
