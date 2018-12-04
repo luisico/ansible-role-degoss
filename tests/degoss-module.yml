@@ -1,0 +1,8 @@
+---
+- name: test
+  hosts: all
+  tasks:
+    - name: degossify
+      degoss:
+        verbose: true
+        log_file: /tmp/degoss.log

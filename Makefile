@@ -22,7 +22,7 @@ test: start
 		docker exec $(IMAGE) ansible-galaxy install -r /etc/ansible/roles/default/tests/requirements.yml ; \
 	fi
 	@docker exec $(IMAGE) env ANSIBLE_FORCE_COLOR=yes \
-		ansible-playbook $(shell echo $$ANSIBLE_ARGS) /etc/ansible/roles/default/tests/playbook.yml
+		ansible-playbook $(shell echo $$ANSIBLE_ARGS) /etc/ansible/roles/default/tests/degoss-module.yml
 
 prepare-apply:
 	@mkdir -p target/ .ansible/galaxy-roles
