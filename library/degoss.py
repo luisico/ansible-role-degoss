@@ -21,6 +21,25 @@ else:
     from StringIO import StringIO
 
 
+DOCUMENTATION = """
+---
+module: degoss
+author: Naftuli Kay <me@naftuli.wtf>
+short_description: Download, execute, and remove Goss against test cases.
+description:
+    - Download, execute, and remove Goss against test cases located on disk.
+options:
+    log_file:
+        required: false
+        description: If specifed, log module output to this file on disk on the remote host.
+    verbose:
+        required: false
+        default: false
+        description: If true, log output to standard error.
+examples: []
+"""
+
+
 CONSOLE_LOGGING_FORMAT = '[%(levelname)-8s] %(message)s'
 DISK_LOGGING_FORMAT = '%(asctime)s [%(levelname)-8s] %(name)s: %(message)s'
 
@@ -58,7 +77,7 @@ class Degoss(object):
         """Setup logging for the module based on parameters."""
         # configure output handlers
         buffer_handler = logging.StreamHandler(stream=self.log_output)
-        buffer_handler.setFormatter(logging.Formatter(DISK_LOGGING_FORMAT)
+        buffer_handler.setFormatter(logging.Formatter(DISK_LOGGING_FORMAT))
 
         console_handler = logging.StreamHandler(stream=sys.stderr)
         console_handler.setFormatter(logging.Formatter(CONSOLE_LOGGING_FORMAT))
