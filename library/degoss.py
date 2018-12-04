@@ -11,7 +11,7 @@ import logging
 import os
 import six
 import sys
-import unittest
+import tempfile
 import yaml
 
 
@@ -40,49 +40,47 @@ examples: []
 """
 
 
-CONSOLE_LOGGING_FORMAT = '[%(levelname)-8s] %(message)s'
-DISK_LOGGING_FORMAT = '%(asctime)s [%(levelname)-8s] %(name)s: %(message)s'
+CONSOLE_LOGGING_FORMAT = '[%(levelname)-5s] %(message)s'
+DISK_LOGGING_FORMAT = '%(asctime)s [%(levelname)-5s] %(name)s: %(message)s'
 
 BOOLEAN_TRUE_MATCHER = re.compile(r'(true|yes|on)', re.I)
 
 
 def main(argv=sys.argv):
     """Main entrypoint into the module, instantiates and executes the service."""
-    Degoss(argv).execute()
+    Degoss(argv, AnsibleModule(
+        argument_spec=dict(
+            log_file=dict(required=False, default=os.path.join(tempfile.gettempdir(), 'degoss.log')),
+            verbose=dict(required=False, default=False),
+        )
+    )).execute()
 
 
 class Degoss(object):
 
-    def __init__(self, argv):
+    def __init__(self, argv, module):
         """Constructor for a Degoss service."""
         # instantiate independent variables first
         self.argv = argv
         self.log_output = StringIO()
+        self.module = module
 
         # now that all independent variables are initialized, call initialization methods
-        self.module = self.define_module()
         self.logger = self.setup_logging()
-
-    def define_module(self):
-        """Create the Ansible module definition and return it."""
-        return AnsibleModule(
-            argument_spec=dict(
-                log_file=dict(required=False, default=None),
-                verbose=dict(required=False, default=False),
-            ),
-            supports_check_mode=False,
-        )
 
     def setup_logging(self):
         """Setup logging for the module based on parameters."""
+        # rewrite warning to warn
+        logging.addLevelName(30, 'WARN')
+
         # configure output handlers
         buffer_handler = logging.StreamHandler(stream=self.log_output)
-        buffer_handler.setFormatter(logging.Formatter(DISK_LOGGING_FORMAT))
+        buffer_handler.setFormatter(logging.Formatter(CONSOLE_LOGGING_FORMAT))
 
         console_handler = logging.StreamHandler(stream=sys.stderr)
         console_handler.setFormatter(logging.Formatter(CONSOLE_LOGGING_FORMAT))
 
-        disk_handler = logging.FileHandler(filename=self.module.params.get('log_file', '/tmp/degoss.log'))
+        disk_handler = logging.FileHandler(filename=self.module.params.get('log_file'))
         disk_handler.setFormatter(logging.Formatter(DISK_LOGGING_FORMAT))
 
         logger = logging.getLogger('degoss')
@@ -119,15 +117,10 @@ class Degoss(object):
         self.logger.warn("warn test")
         self.logger.error("error test")
 
-        self.module.exit_json(changed=False, failed=False, output=self.log_output.getvalue())
+        output_lines = [line for line in self.log_output.getvalue().split(os.linesep) if len(line) > 0]
+
+        self.module.exit_json(changed=False, failed=False, output_lines=output_lines)
 
 
-class DegossTestCase(unittest.TestCase):
-    pass
-
-
-if __name__ == "__main__" and len(sys.argv) >= 2 and sys.argv[1] == "test":
-    # allow executing test cases by running with 'test' as the first argument
-    unittest.main(argv=[__name__], verbosity=2)
-elif __name__ == "__main__":
+if __name__ == "__main__":
     main()
