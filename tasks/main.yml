@@ -40,5 +40,6 @@
 
 # run the tests
 - name: run tests
-  degoss: {}
+  degoss:
+    verbose: true
   register: goss_output
