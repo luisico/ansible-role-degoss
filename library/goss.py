@@ -122,8 +122,6 @@ def main():
             except:
                 env_vars[key] = str(value)
 
-    sys.stderr.write("{}\n".format(env_vars))
-
     rc, stdout, stderr = evaluate(module, test_file, fmt, executable, env_vars, workdir)
 
     result = dict(rc=rc, stdout=stdout, stderr=stderr)
