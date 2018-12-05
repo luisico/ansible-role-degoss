@@ -31,7 +31,7 @@
       {%- else -%}
         {{ playbook_dir | default(".") }}/{{ item }}
       {%- endif -%}
-    dest: "{{ degoss_test_root }}"
+    dest: "{{ degoss_test_dir }}"
     mode: 0644
     directory_mode: 0755
     setype: user_tmp_t

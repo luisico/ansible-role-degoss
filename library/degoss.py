@@ -137,8 +137,11 @@ class Degoss(object):
 
     def detect_dirs(self):
         """Detect the directories to use for running Goss."""
-        raise Exception("Detect and set directory and file variables.")
+        self.bin_dir = self.module.params.get('bin_dir')
+        self.test_dir = self.module.params.get('test_dir')
+        self.test_file = self.module.params.get('test_file').split(os.sep)[-1]
 
+        self.executable = os.path.join(self.bin_dir, 'goss')
 
     def setup_logging(self):
         """Setup logging for the module based on parameters."""
@@ -189,7 +192,6 @@ class Degoss(object):
         return "https://github.com/aelsabbahy/goss/releases/download/v{}/goss-{}-{}".format(self.version, \
             self.os, self.arch)
 
-
     def request(self, url, method='GET'):
         """Make an HTTP request to the given URL and return the response."""
 
@@ -210,18 +212,26 @@ class Degoss(object):
 
         status, _, response = self.request(release_url)
 
-        with open(os.path.join(bin_dir, 'goss'), 'w') as f:
+        with open(self.executable, 'w') as f:
             f.write(response.read())
 
-        self.logger.debug("Successfully installed the binary to %s", os.path.join(bin_dir, 'goss'))
+        self.logger.debug("Successfully installed the binary to %s", self.executable)
 
+    def test(self):
+        """Execute the test cases."""
+        pass
+
+    def clean(self):
+        """Clean everything up."""
+        pass
 
     def execute(self):
-        """Execute the degoss process."""
+        """Run the module."""
         self.install()
+        self.test()
+        self.clean()
 
         output_lines = [line for line in self.log_output.getvalue().split(os.linesep) if len(line) > 0]
-
         self.module.exit_json(changed=False, failed=False, output_lines=output_lines)
 
     def fail(self, message):
