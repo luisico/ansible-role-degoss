@@ -40,6 +40,7 @@
 
 # run the tests
 - name: run tests
-  degoss:
-    verbose: true
+  degoss: {}
+    # verbose: true
+    # log_file: /tmp/degoss.log
   register: goss_output

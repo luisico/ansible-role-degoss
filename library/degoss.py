@@ -9,6 +9,7 @@ from ansible.module_utils.six import integer_types, string_types
 import json
 import logging
 import os
+import platform
 import six
 import sys
 import tempfile
@@ -17,8 +18,10 @@ import yaml
 
 if six.PY3:
     from io import StringIO
+    from urllib.request import Request, urlopen
 else:
     from StringIO import StringIO
+    from urllib2 import Request, urlopen
 
 
 DOCUMENTATION = """
@@ -68,10 +71,30 @@ class Degoss(object):
         # now that all independent variables are initialized, call initialization methods
         self.logger = self.setup_logging()
 
+        # arch/os detection
+        self.os, self.arch = None, None
+        self.detect_environment()
+
+    def detect_environment(self):
+        """Detect the runtime environment on the host."""
+        uname = platform.uname()
+
+        self.os, self.arch = uname[0].lower(), uname[4]
+
+        if self.arch == 'x86_64':
+            # goss publishes as goss-linux-amd64
+            self.arch = 'amd64'
+        elif self.arch == 'i386':
+            # goss publishes as goss-linux-386
+            self.arch = '386'
+
+        self.logger.debug("Host environment is %s-%s", self.os, self.arch)
+
+
     def setup_logging(self):
         """Setup logging for the module based on parameters."""
         # rewrite warning to warn
-        logging.addLevelName(30, 'WARN')
+        #  logging.addLevelName(30, 'WARN')
 
         # configure output handlers
         buffer_handler = logging.StreamHandler(stream=self.log_output)
@@ -111,16 +134,57 @@ class Degoss(object):
         else:
             return False
 
+    def get_release_url(self, version):
+        """Fetch the Goss binary URL."""
+        if version == 'latest':
+            self.logger.debug("Goss version requested is latest, detecting the latest available Goss release"
+                    " from GitHub.")
+
+            status, url, response = self.request("https://github.com/aelsabbahy/goss/releases/latest")
+
+            if status != 200:
+                self.fail("Unable to determine latest Goss release, HTTP status %d".format(status))
+
+            # url will be something like https://github.com/aelsabbahy/goss/releases/tag/v0.3.6,
+            # we will extract the tag from this url, then attempt to transform this into a version
+            tag = url.split('/')[-1]
+
+            version = tag[1:] if tag[0] == 'v' else tag
+
+            self.logger.info("Detected latest available Goss version as %s", version)
+
+        # regardless, return the release URL
+        return "https://github.com/aelsabbahy/goss/releases/download/v{}/goss-{}-{}".format(version, \
+            self.arch, self.os)
+
+
+    def request(self, url, method='GET'):
+        """Make an HTTP request to the given URL and return the response."""
+
+        r = Request(url)
+        r.get_method = lambda: method
+
+        response = urlopen(r)
+        status, response_url = response.getcode(), response.geturl()
+
+        return status, response_url, response
+
+
     def execute(self):
         """Execute the degoss process."""
-        self.logger.debug("debug test")
-        self.logger.info("info test")
-        self.logger.warn("warn test")
-        self.logger.error("error test")
+        specific_release = self.get_release_url('0.3.6')
+        latest_release = self.get_release_url('latest')
+
+        self.logger.debug("Specific release URL: %s", specific_release)
+        self.logger.debug("Latest release URL: %s", latest_release)
 
         output_lines = [line for line in self.log_output.getvalue().split(os.linesep) if len(line) > 0]
 
         self.module.exit_json(changed=False, failed=False, output_lines=output_lines)
+
+    def fail(self, message):
+        """Fail with a message."""
+        self.module.exit_json({ 'failed': True, 'msg': message})
 
 
 if __name__ == "__main__":
