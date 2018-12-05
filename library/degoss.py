@@ -38,6 +38,12 @@ options:
     log_file:
         required: false
         description: If specifed, log module output to this file on disk on the remote host.
+    test_dir:
+        required: true
+        description: The directory in which test files are located.
+    test_file:
+        required: true
+        description: The test file to execute Goss against.
     verbose:
         required: false
         default: false
@@ -62,6 +68,8 @@ def main(argv=sys.argv):
         argument_spec=dict(
             bin_dir=dict(required=True),
             log_file=dict(required=False, default=None),
+            test_dir=dict(required=True),
+            test_file=dict(required=True),
             verbose=dict(required=False, default=False),
             version=dict(required=False, default='latest'),
         )
@@ -84,6 +92,14 @@ class Degoss(object):
         self.os, self.arch = None, None
         self.detect_environment()
 
+        # version detection
+        self.version = None
+        self.detect_version()
+
+        # directory detection
+        self.bin_dir, self.test_dir, self.test_file = None, None, None
+        self.detect_dirs()
+
     def detect_environment(self):
         """Detect the runtime environment on the host."""
         uname = platform.uname()
@@ -98,6 +114,30 @@ class Degoss(object):
             self.arch = '386'
 
         self.logger.debug("Host environment is %s-%s", self.os, self.arch)
+
+    def detect_version(self):
+        """Detect the actual version of Goss."""
+        version = self.module.params.get('version', 'latest')
+
+        if version == 'latest':
+            status, url, response = self.request("https://github.com/aelsabbahy/goss/releases/latest")
+
+            if status != 200:
+                self.fail("Unable to determine latest Goss release, HTTP status %d".format(status))
+
+            # url will be something like https://github.com/aelsabbahy/goss/releases/tag/v0.3.6,
+            # we will extract the tag from this url, then attempt to transform this into a version
+            tag = url.split('/')[-1]
+
+            version = tag[1:] if tag[0] == 'v' else tag
+
+            self.logger.info("Detected latest available Goss version as %s", version)
+
+        self.version = version
+
+    def detect_dirs(self):
+        """Detect the directories to use for running Goss."""
+        raise Exception("Detect and set directory and file variables.")
 
 
     def setup_logging(self):
@@ -143,27 +183,10 @@ class Degoss(object):
         else:
             return False
 
-    def get_release_url(self, version):
+    def get_release_url(self):
         """Fetch the Goss binary URL."""
-        if version == 'latest':
-            self.logger.debug("Goss version requested is latest, detecting the latest available Goss release"
-                    " from GitHub.")
-
-            status, url, response = self.request("https://github.com/aelsabbahy/goss/releases/latest")
-
-            if status != 200:
-                self.fail("Unable to determine latest Goss release, HTTP status %d".format(status))
-
-            # url will be something like https://github.com/aelsabbahy/goss/releases/tag/v0.3.6,
-            # we will extract the tag from this url, then attempt to transform this into a version
-            tag = url.split('/')[-1]
-
-            version = tag[1:] if tag[0] == 'v' else tag
-
-            self.logger.info("Detected latest available Goss version as %s", version)
-
         # regardless, return the release URL
-        return "https://github.com/aelsabbahy/goss/releases/download/v{}/goss-{}-{}".format(version, \
+        return "https://github.com/aelsabbahy/goss/releases/download/v{}/goss-{}-{}".format(self.version, \
             self.os, self.arch)
 
 
@@ -181,7 +204,7 @@ class Degoss(object):
     def install(self):
         """Install the Goss binary."""
         bin_dir = self.module.params.get('bin_dir')
-        release_url = self.get_release_url(self.module.params.get('version', 'latest'))
+        release_url = self.get_release_url()
 
         self.logger.info("Installing the Goss binary from %s into %s", release_url, bin_dir)
 
