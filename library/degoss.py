@@ -32,6 +32,9 @@ short_description: Download, execute, and remove Goss against test cases.
 description:
     - Download, execute, and remove Goss against test cases located on disk.
 options:
+    bin_dir:
+        required: true
+        description: The directory to install the Goss binary into.
     log_file:
         required: false
         description: If specifed, log module output to this file on disk on the remote host.
@@ -39,6 +42,10 @@ options:
         required: false
         default: false
         description: If true, log output to standard error.
+    version:
+        required: false
+        default: latest
+        description: If latest, the latest available Goss version, otherwise the specified version, e.g. 0.3.6.
 examples: []
 """
 
@@ -53,8 +60,10 @@ def main(argv=sys.argv):
     """Main entrypoint into the module, instantiates and executes the service."""
     Degoss(argv, AnsibleModule(
         argument_spec=dict(
+            bin_dir=dict(required=True),
             log_file=dict(required=False, default=None),
             verbose=dict(required=False, default=False),
+            version=dict(required=False, default='latest'),
         )
     )).execute()
 
@@ -155,7 +164,7 @@ class Degoss(object):
 
         # regardless, return the release URL
         return "https://github.com/aelsabbahy/goss/releases/download/v{}/goss-{}-{}".format(version, \
-            self.arch, self.os)
+            self.os, self.arch)
 
 
     def request(self, url, method='GET'):
@@ -169,14 +178,24 @@ class Degoss(object):
 
         return status, response_url, response
 
+    def install(self):
+        """Install the Goss binary."""
+        bin_dir = self.module.params.get('bin_dir')
+        release_url = self.get_release_url(self.module.params.get('version', 'latest'))
+
+        self.logger.info("Installing the Goss binary from %s into %s", release_url, bin_dir)
+
+        status, _, response = self.request(release_url)
+
+        with open(os.path.join(bin_dir, 'goss'), 'w') as f:
+            f.write(response.read())
+
+        self.logger.debug("Successfully installed the binary to %s", os.path.join(bin_dir, 'goss'))
+
 
     def execute(self):
         """Execute the degoss process."""
-        specific_release = self.get_release_url('0.3.6')
-        latest_release = self.get_release_url('latest')
-
-        self.logger.debug("Specific release URL: %s", specific_release)
-        self.logger.debug("Latest release URL: %s", latest_release)
+        self.install()
 
         output_lines = [line for line in self.log_output.getvalue().split(os.linesep) if len(line) > 0]
 

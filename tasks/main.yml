@@ -9,7 +9,7 @@
   set_fact:
     degoss_tmp_root: "{{ workdir.stdout.strip() }}"
     degoss_test_root: "{{ workdir.stdout.strip() }}/tests"
-    degoss_goss_install_dir: "{{ workdir.stdout.strip() }}/bin"
+    degoss_bin_dir: "{{ workdir.stdout.strip() }}/bin"
     degoss_goss_bin: "{{ workdir.stdout.strip() }}/bin/goss"
     goss_file_basename: "{{ goss_file.split('/')[-1] }}"
 
@@ -19,7 +19,7 @@
   with_items:
     - "{{ degoss_tmp_root }}"
     - "{{ degoss_test_root }}"
-    - "{{ degoss_goss_install_dir }}"
+    - "{{ degoss_bin_dir }}"
   changed_when: degoss_changed_when
 
 # deploy test files including the main and additional test files
@@ -40,7 +40,7 @@
 
 # run the tests
 - name: run tests
-  degoss: {}
-    # verbose: true
-    # log_file: /tmp/degoss.log
+  degoss:
+    bin_dir: "{{ degoss_bin_dir }}"
+    log_file: /tmp/degoss.log
   register: goss_output
