@@ -45,4 +45,5 @@
     log_file: /tmp/degoss.log
     test_dir: "{{ degoss_test_dir }}"
     test_file: "{{ goss_file }}"
+    tmp_root: "{{ degoss_tmp_root }}"
   register: goss_output

@@ -44,6 +44,9 @@ options:
     test_file:
         required: true
         description: The test file to execute Goss against.
+    tmp_root:
+        required: true
+        description: The temporary root directory to remove after running.
     verbose:
         required: false
         default: false
@@ -70,6 +73,7 @@ def main(argv=sys.argv):
             log_file=dict(required=False, default=None),
             test_dir=dict(required=True),
             test_file=dict(required=True),
+            tmp_root=dict(required=True),
             verbose=dict(required=False, default=False),
             version=dict(required=False, default='latest'),
         )
@@ -227,9 +231,11 @@ class Degoss(object):
 
     def execute(self):
         """Run the module."""
-        self.install()
-        self.test()
-        self.clean()
+        try:
+            self.install()
+            self.test()
+        finally:
+            self.clean()
 
         output_lines = [line for line in self.log_output.getvalue().split(os.linesep) if len(line) > 0]
         self.module.exit_json(changed=False, failed=False, output_lines=output_lines)
